@@ -1,0 +1,33 @@
+import pytest
+import pandas as pd
+from analysis.visualization import MBAResultsVisualizer
+from unittest.mock import patch
+
+@pytest.fixture
+def sample_rules():
+    return pd.DataFrame({
+        'antecedents': [frozenset({'Milk'}), frozenset({'Bread'})],
+        'consequents': [frozenset({'Bread'}), frozenset({'Eggs'})],
+        'support': [0.1, 0.05],
+        'confidence': [0.8, 0.6],
+        'lift': [2.5, 1.8]
+    })
+
+@pytest.fixture
+def sample_recommendations():
+    return {
+        'Milk': ['Bread', 'Eggs'],
+        'Bread': ['Milk', 'Butter']
+    }
+
+def test_plot_top_rules(sample_rules):
+    with patch('matplotlib.pyplot.savefig') as mock_save:
+        visualizer = MBAResultsVisualizer()
+        visualizer.plot_top_rules(sample_rules)
+        mock_save.assert_called_once()
+
+def test_plot_network_graph(sample_recommendations):
+    with patch('networkx.draw') as mock_draw:
+        visualizer = MBAResultsVisualizer()
+        visualizer.plot_network_graph(sample_recommendations)
+        mock_draw.assert_called()
