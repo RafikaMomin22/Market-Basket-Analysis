@@ -1,0 +1,41 @@
+import pytest
+from unittest.mock import patch, MagicMock
+import pandas as pd
+from etl.extract import DataExtractor
+from etl.transform import DataTransformer
+from etl.load import DataLoader
+
+@pytest.fixture
+def sample_transaction_data():
+    return pd.DataFrame({
+        'transaction_id': [1, 1, 2, 2, 3],
+        'product_id': [101, 102, 101, 103, 102],
+        'product_name': ['Milk', 'Bread', 'Milk', 'Eggs', 'Bread'],
+        'category': ['Dairy', 'Bakery', 'Dairy', 'Dairy', 'Bakery']
+    })
+
+def test_data_extractor_connection():
+    with patch('pyodbc.connect') as mock_connect:
+        extractor = DataExtractor()
+        extractor._test_connection()
+        mock_connect.assert_called_once()
+
+def test_data_transformer(sample_transaction_data):
+    transformer = DataTransformer(min_support=0.1, min_confidence=0.3)
+    results = transformer.generate_association_rules(sample_transaction_data)
+    
+    assert 'frequent_itemsets' in results
+    assert 'association_rules' in results
+    assert not results['frequent_itemsets'].empty
+
+def test_data_loader(tmp_path, sample_transaction_data):
+    with patch('config.settings.DATA_PROCESSED_PATH', tmp_path):
+        loader = DataLoader()
+        test_data = {'test_df': sample_transaction_data}
+        loader.save_processed_data(test_data)
+        
+        saved_file = tmp_path / "test_df.parquet"
+        assert saved_file.exists()
+        
+        loaded_df = pd.read_parquet(saved_file)
+        assert not loaded_df.empty
